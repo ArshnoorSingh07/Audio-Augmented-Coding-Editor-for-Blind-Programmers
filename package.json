@@ -1,0 +1,383 @@
+{
+  "name": "blindcoder-audio-editor",
+  "displayName": "BlindCoder — Audio-Augmented Python Editor",
+  "description": "",
+  "version": "0.1.3",
+  "publisher": "",
+  "author": {
+    "name": "",
+    "email": ""
+  },
+  "license": "",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Linters",
+    "Other",
+    "Accessibility"
+  ],
+  "keywords": [
+    "accessibility",
+    "blind",
+    "audio",
+    "python",
+    "linter",
+    "screen-reader"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:python",
+    "onCommand:blindCoder.openAudioPanel",
+    "onCommand:blindCoder.readCurrentLine",
+    "onCommand:blindCoder.readContext",
+    "onCommand:blindCoder.nextError",
+    "onCommand:blindCoder.prevError",
+    "onCommand:blindCoder.summarizeErrors",
+    "onCommand:blindCoder.repeatLast",
+    "onCommand:blindCoder.toggleVerbosity",
+    "onCommand:blindCoder.toggleQuiet",
+    "onCommand:blindCoder.startTraining",
+    "onCommand:blindCoder.testBeep",
+    "onCommand:blindCoder.whereAmI",
+    "onCommand:blindCoder.voiceDebugHelp",
+    "onCommand:blindCoder.aiDialog",
+    "onCommand:blindCoder.runAndSpeak",
+    "onCommand:blindCoder.fixCodeSyntax",
+    "onCommand:blindcoder.voiceCode",
+    "onCommand:blindCoder.voiceCode",
+    "onCommand:blindCoder.voiceCode.toggle",
+    "onCommand:blindCoder.toggleKeystrokeAnnounce"
+  ],
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "BlindCoder Settings",
+      "properties": {
+        "blindCoder.voice.rate": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 2,
+          "description": "Speech rate used by BlindCoder TTS (0.5 = slower, 2.0 = faster)."
+        },
+        "blindCoder.voice.pitch": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.5,
+          "maximum": 2,
+          "description": "Voice pitch for BlindCoder TTS."
+        },
+        "blindCoder.voice.lang": {
+          "type": "string",
+          "default": "en-US",
+          "description": "Language tag for TTS (e.g. en-US, en-GB)."
+        },
+        "blindCoder.quietMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, disables earcons and spoken announcements."
+        },
+        "blindCoder.earconMappings": {
+          "type": "object",
+          "default": {
+            "missingColon": "tap.wav",
+            "indentation": "knock.wav",
+            "unmatchedParen": "buzz.wav",
+            "unexpectedToken": "blip.wav",
+            "undefinedName": "pop.wav",
+            "default": "glitch.wav",
+            "error": "buzz.wav",
+            "success": "blip.wav"
+          },
+          "description": "Map diagnostic event keys to earcon filenames located in media/sounds."
+        },
+        "blindCoder.announceKeystrokes": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, BlindCoder will announce each typed character or keypress (opt-in). Default is false for privacy."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "blindCoder.openAudioPanel",
+        "title": "BlindCoder: Open Audio Panel",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.readCurrentLine",
+        "title": "BlindCoder: Read Current Line",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.readContext",
+        "title": "BlindCoder: Read Context",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.nextError",
+        "title": "BlindCoder: Next Error",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.prevError",
+        "title": "BlindCoder: Previous Error",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.summarizeErrors",
+        "title": "BlindCoder: Summarize Errors",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.repeatLast",
+        "title": "BlindCoder: Repeat Last Message",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.toggleVerbosity",
+        "title": "BlindCoder: Toggle Verbosity",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.toggleQuiet",
+        "title": "BlindCoder: Toggle Quiet Mode",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.startTraining",
+        "title": "BlindCoder: Start Training Mode",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.testBeep",
+        "title": "BlindCoder: Test Beep",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.whereAmI",
+        "title": "BlindCoder: Where Am I?",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.voiceDebugHelp",
+        "title": "BlindCoder: Voice Debug Help",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.aiDialog",
+        "title": "BlindCoder: AI Voice-to-Code",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.runAndSpeak",
+        "title": "BlindCoder: Run Python File and Speak Output",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.fixCodeSyntax",
+        "title": "BlindCoder: Fix Code Syntax",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindcoder.voiceCode",
+        "title": "BlindCoder: Voice to Code (legacy)",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.voiceCode",
+        "title": "BlindCoder: Voice to Code",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.voiceCode.toggle",
+        "title": "BlindCoder: Toggle Voice Coding",
+        "category": "BlindCoder"
+      },
+      {
+        "command": "blindCoder.toggleKeystrokeAnnounce",
+        "title": "BlindCoder: Toggle Keystroke Announcements",
+        "category": "BlindCoder"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "blindCoder.fixCodeSyntax",
+        "key": "ctrl+4",
+        "mac": "cmd+4",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.fixCodeSyntax",
+        "key": "ctrl+alt+f",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.readCurrentLine",
+        "key": "ctrl+l",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.readContext",
+        "key": "ctrl+alt+c",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.nextError",
+        "key": "ctrl+alt+n",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.prevError",
+        "key": "ctrl+alt+p",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.summarizeErrors",
+        "key": "ctrl+alt+s",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.repeatLast",
+        "key": "ctrl+alt+r",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.toggleVerbosity",
+        "key": "ctrl+alt+v"
+      },
+      {
+        "command": "blindCoder.toggleQuiet",
+        "key": "ctrl+alt+q"
+      },
+      {
+        "command": "blindCoder.testBeep",
+        "key": "ctrl+alt+b"
+      },
+      {
+        "command": "blindCoder.whereAmI",
+        "key": "ctrl+alt+i",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.voiceDebugHelp",
+        "key": "ctrl+shift+/",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.aiDialog",
+        "key": "ctrl+alt+a",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindCoder.runAndSpeak",
+        "key": "ctrl+alt+x",
+        "when": "editorTextFocus && editorLangId == python"
+      },
+      {
+        "command": "blindcoder.voiceCode",
+        "key": "ctrl+m",
+        "mac": "cmd+m",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "blindCoder.voiceCode.toggle",
+        "key": "ctrl+alt+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "blindCoder.toggleKeystrokeAnnounce",
+        "key": "ctrl+alt+k",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "blindCoder.openAudioPanel",
+          "when": "resourceLangId == python"
+        },
+        {
+          "command": "blindCoder.readCurrentLine",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.readContext",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.nextError",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.prevError",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.summarizeErrors",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.whereAmI",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.voiceDebugHelp",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.aiDialog",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.runAndSpeak",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "blindCoder.voiceCode.toggle",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "blindCoder.toggleKeystrokeAnnounce",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "generate:sounds": "node scripts/generateSounds.js",
+    "compile": "npm run generate:sounds && tsc -p .",
+    "watch": "tsc -w -p .",
+    "pretest": "npm run compile",
+    "test": "node ./dist/test/runTest.js",
+    "package": "npm run generate:sounds && vsce package",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "@types/vscode": "^1.106.1",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.x",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "say": "^0.16.0"
+  },
+  "extensionDependencies": [],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  }
+}

@@ -1,0 +1,9 @@
+[keybinding]:
+
+Voice Debug Help (guide to fix current issue): Ctrl+Shift+/ → blindCoder.voiceDebugHelp
+
+Where am I?: Ctrl+Alt+I → blindCoder.whereAmI
+
+AI Voice-to-Code (dialog): Ctrl+Alt+C → blindCoder.aiDialog
+
+Test Beep: Ctrl+Alt+B (kept) → blindCoder.testBeep

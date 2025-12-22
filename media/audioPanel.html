@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BlindCoder — Audio Panel (Voice integrated)</title>
+<style>
+  :root{
+    --bg: #06121a;
+    --panel: #071623;
+    --card: #0b1b26;
+    --muted: #9fb0c6;
+    --text: #e8f3ff;
+    --accent: #6c63ff;
+    --accent-2: #60a5fa;
+    --glass: rgba(255,255,255,0.03);
+    --kbd-bg: rgba(255,255,255,0.04);
+    --radius: 14px;
+    --shadow: 0 14px 40px rgba(2,6,23,0.6);
+    --focus: 3px solid rgba(96,165,250,0.14);
+    font-family: Inter, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#02060a,var(--bg));color:var(--text);font-size:14px}
+  .container{box-sizing:border-box;padding:18px;height:100%;display:flex;gap:18px}
+  aside{width:360px;background:linear-gradient(180deg,var(--panel), #081624);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  main{flex:1;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
+  header.app{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:white;box-shadow:0 8px 26px rgba(99,91,255,0.12)}
+  h1{margin:0;font-size:18px}
+  .meta{color:var(--muted);font-size:13px}
+  .statusbar{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.03);margin-bottom:14px}
+  .status-left{display:flex;gap:12px;align-items:center}
+  .status-dot{width:10px;height:10px;border-radius:50%;background:#10b981;box-shadow:0 6px 18px rgba(16,185,129,0.06)}
+  .status-text{font-weight:700;color:var(--text)}
+  .status-info{display:flex;gap:12px;align-items:center;color:var(--muted);font-size:13px}
+  .controls{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+  .row{display:flex;gap:10px;align-items:center}
+  .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.03);padding:10px 14px;border-radius:10px;cursor:pointer;color:var(--text);min-height:44px;display:inline-flex;align-items:center;gap:10px}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:white;font-weight:700;box-shadow:0 12px 34px rgba(99,91,255,0.12)}
+  input[type=search], input[type=text], textarea { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.03); background:rgba(255,255,255,0.015); color:var(--text) }
+  .shortcuts-wrapper { display:flex; flex-direction:column; align-items:center; margin-top:8px; }
+  .shortcuts{width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px; align-items:stretch; justify-content:center}
+  .shortcut{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));cursor:pointer; border:1px solid rgba(255,255,255,0.02)}
+  .chip{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);flex-shrink:0}
+  .kbd{background:var(--kbd-bg);padding:6px 10px;border-radius:8px;font-size:13px;color:var(--text);border:1px solid rgba(255,255,255,0.02)}
+  .small{font-size:13px;color:var(--muted)}
+  .log{margin-top:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.01);min-height:220px;overflow:auto}
+  .log-entry{font-size:13px;color:var(--muted);padding:8px 0;border-bottom:1px dashed rgba(255,255,255,0.02)}
+  .apply-row{display:flex;gap:8px;margin-top:12px}
+  .apply-row input{flex:1}
+  .voice-box{margin-top:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+  .voice-transcript{min-height:68px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.16);color:var(--muted);white-space:pre-wrap;overflow:auto}
+  .mic-controls{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .rec-dot{width:12px;height:12px;border-radius:50%;background:#ef4444;box-shadow:0 6px 16px rgba(239,68,68,0.18);display:inline-block;vertical-align:middle;margin-right:8px}
+  .hidden{display:none}
+  .center{display:flex;align-items:center;justify-content:center}
+  .hint{color:var(--muted);font-size:13px;margin-top:6px}
+  .transient { color: #cfe8ff; opacity: 0.85; font-style: italic; }
+  .final { color: var(--text); opacity: 1; font-weight:600; }
+
+  .shortcut:focus, .btn:focus, input:focus, textarea:focus { outline: none; box-shadow: var(--focus); border-color: var(--accent-2); }
+  @media (max-width:900px){ aside{width:100%} .container{flex-direction:column} }
+</style>
+</head>
+<body>
+  <div class="container" role="application" aria-label="BlindCoder audio panel">
+    <aside aria-label="Controls and shortcuts">
+      <header class="app">
+        <div class="logo" aria-hidden>BC</div>
+        <div>
+          <h1>BlindCoder — Audio</h1>
+          <div class="meta">Shortcuts · earcons · voice</div>
+        </div>
+      </header>
+
+      <div class="controls" role="region" aria-label="Audio controls">
+        <div class="row" style="gap:12px">
+          <button id="open-mic" class="btn primary" title="Open/Stop voice capture (Ctrl+M)">🎤 Voice (Ctrl+M)</button>
+          <button id="undo" class="btn" title="Undo last voice insertion">↶ Undo</button>
+        </div>
+
+        <div style="margin-top:6px">
+          <label class="small">Filter shortcuts</label>
+          <input id="filter" type="search" placeholder="Type to filter (e.g., Ctrl+Alt+F)">
+        </div>
+
+        <div style="margin-top:8px;display:flex;gap:10px;align-items:center">
+          <div style="flex:1">
+            <label class="small">Speech rate <span id="rateVal" style="float:right">1.0</span></label>
+            <input id="rate" type="range" min="0.5" max="2.0" step="0.1" value="1.0">
+          </div>
+          <div>
+            <label class="small">Quiet</label><br>
+            <button id="quietBtn" class="btn" title="Toggle quiet mode">Quiet: Off</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1">
+            <div class="small">Error earcon</div>
+            <select id="errSelect" class="btn" aria-label="Error sound">
+              <option value="buzz.wav">buzz</option>
+              <option value="glitch.wav">glitch</option>
+              <option value="knock.wav">knock</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <div class="small">Success earcon</div>
+            <select id="okSelect" class="btn" aria-label="Success sound">
+              <option value="blip.wav">blip</option>
+              <option value="tap.wav">tap</option>
+              <option value="pop.wav">pop</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="shortcuts-wrapper" aria-hidden="false">
+          <div style="width:100%;max-width:320px">
+            <div class="small" style="margin-bottom:8px;text-align:center">Available shortcuts</div>
+            <div id="shortcutsList" class="shortcuts" role="listbox" tabindex="0" aria-label="Shortcuts list"></div>
+          </div>
+        </div>
+      </div>
+
+      <footer style="margin-top:12px">
+        <div class="small">Version: dev · Tab to navigate · Enter to activate</div>
+      </footer>
+    </aside>
+
+    <main aria-live="polite">
+      <div class="statusbar" role="status" aria-live="polite">
+        <div class="status-left">
+          <div class="status-dot" aria-hidden></div>
+          <div class="status-text" id="statusBox">Status: Ready</div>
+        </div>
+        <div class="status-info">
+          <div class="small">File: <span id="currentFile">-</span></div>
+          <div class="small">Diagnostics: <span id="diagCount">0</span></div>
+        </div>
+      </div>
+
+      <div class="log" id="activityLog" aria-label="Activity log"></div>
+
+      <section style="margin-top:12px">
+        <div class="apply-row">
+          <input id="customSnippet" placeholder="def foo():\n  pass" aria-label="Custom snippet text">
+          <button id="applySnippet" class="btn">Apply</button>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+          <button id="run" class="btn">▶ Run & Narrate (Ctrl+Alt+X)</button>
+          <button id="fix" class="btn">🛠 Fix Code (Ctrl+Alt+F)</button>
+          <div style="flex:1"></div>
+          <div class="small center">Voice integrated — speak to insert or ask to fix</div>
+        </div>
+
+        <div class="voice-box" aria-hidden="false">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="small">Live voice transcript</div>
+              <div class="hint">Press <strong>Ctrl+M</strong> to toggle the mic (panel must have focus).</div>
+            </div>
+            <div id="micIndicator" class="center" aria-live="polite">
+              <span id="recDot" class="rec-dot hidden" aria-hidden="true"></span>
+              <div id="micState" class="small">Mic: idle</div>
+            </div>
+          </div>
+
+          <div id="voiceTranscript" class="voice-transcript">No voice activity yet</div>
+
+          <div class="mic-controls">
+            <button id="micToggle" class="btn">Start mic</button>
+            <button id="micClear" class="btn">Clear transcript</button>
+            <div style="flex:1"></div>
+            <button id="micInsert" class="btn">Insert last (final)</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- assets placeholder -->
+  <audio id="ear_buzz" src="__ASSET_BASE__/sounds/buzz.wav" preload="auto"></audio>
+  <audio id="ear_blip" src="__ASSET_BASE__/sounds/blip.wav" preload="auto"></audio>
+  <audio id="ear_knock" src="__ASSET_BASE__/sounds/knock.wav" preload="auto"></audio>
+  <audio id="ear_tap" src="__ASSET_BASE__/sounds/tap.wav" preload="auto"></audio>
+  <audio id="ear_glitch" src="__ASSET_BASE__/sounds/glitch.wav" preload="auto"></audio>
+  <audio id="ear_pop" src="__ASSET_BASE__/sounds/pop.wav" preload="auto"></audio>
+
+<script>
+  const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+
+  const shortcuts = [
+    { id: 'blindCoder.voiceCode', label: 'Start Voice-to-Code', keys: 'Ctrl+M', desc: 'Start/stop embedded mic' },
+    { id: 'blindCoder.openAudioPanel', label: 'Toggle Audio Panel', keys: 'Ctrl+Alt+V', desc: 'Open/close the audio panel' },
+    { id: 'blindCoder.fixCodeSyntax', label: 'Fix Python Syntax', keys: 'Ctrl+Alt+F', desc: 'Run auto-fix script' },
+    { id: 'blindCoder.runAndSpeak', label: 'Run File & Speak', keys: 'Ctrl+Alt+X', desc: 'Execute current Python file and narrate output' },
+    { id: 'blindCoder.readCurrentLine', label: 'Read Current Line', keys: 'Ctrl+Alt+L', desc: 'Speak the current editor line' },
+    { id: 'blindCoder.nextError', label: 'Next Error', keys: 'Ctrl+Alt+N', desc: 'Jump to next diagnostic' }
+  ];
+
+  // elements
+  const shortcutsList = document.getElementById('shortcutsList');
+  const filter = document.getElementById('filter');
+  const activityLog = document.getElementById('activityLog');
+  const statusBox = document.getElementById('statusBox');
+  const rate = document.getElementById('rate');
+  const rateVal = document.getElementById('rateVal');
+  const quietBtn = document.getElementById('quietBtn');
+  const openMic = document.getElementById('open-mic');
+  const applySnippet = document.getElementById('applySnippet');
+  const customSnippet = document.getElementById('customSnippet');
+  const errSelect = document.getElementById('errSelect');
+  const okSelect = document.getElementById('okSelect');
+  const runBtn = document.getElementById('run');
+  const fixBtn = document.getElementById('fix');
+  const voiceTranscript = document.getElementById('voiceTranscript');
+  const micToggle = document.getElementById('micToggle');
+  const micClear = document.getElementById('micClear');
+  const micInsert = document.getElementById('micInsert');
+  const recDot = document.getElementById('recDot');
+  const micState = document.getElementById('micState');
+
+  let state = { quiet: false, rate: 1.0 };
+
+  // SpeechRecognition setup
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  let recognition = null;
+  let isRecording = false;
+  let lastFinalTranscript = '';
+  let interimBuffer = '';
+
+  function hasSpeechSupport() {
+    return !!SpeechRecognition;
+  }
+
+  function createRecognition() {
+    if (!hasSpeechSupport()) return null;
+    const r = new SpeechRecognition();
+    r.lang = 'en-US';
+    r.interimResults = true;
+    r.continuous = true;
+    r.maxAlternatives = 1;
+
+    r.onstart = () => {
+      isRecording = true;
+      recDot.classList.remove('hidden');
+      micState.textContent = 'Mic: recording';
+      announce('Recording started');
+      log('Mic: started');
+    };
+
+    r.onend = () => {
+      isRecording = false;
+      recDot.classList.add('hidden');
+      micState.textContent = 'Mic: idle';
+      announce('Recording stopped');
+      log('Mic: stopped');
+      // Chrome sometimes stops automatically — if we previously had no stop request, user can restart
+    };
+
+    r.onerror = (ev) => {
+      log(`Mic error: ${ev && ev.error ? ev.error : 'unknown'}`);
+      announce('Microphone error');
+    };
+
+    r.onresult = (ev) => {
+      let interim = '';
+      let final = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res.isFinal) final += (res[0].transcript || '') + ' ';
+        else interim += (res[0].transcript || '') + ' ';
+      }
+      interim = interim.trim();
+      final = final.trim();
+      if (final) {
+        // push final into area and send to extension
+        appendTranscript(final, true);
+        lastFinalTranscript = final;
+        interimBuffer = '';
+        sendTranscriptToExtension(final, true);
+      } else {
+        interimBuffer = interim;
+        showInterim(interim);
+        // post interim if you want (here we show only locally; can post to extension as partial)
+        sendTranscriptToExtension(interim, false);
+      }
+    };
+
+    return r;
+  }
+
+  function startMic() {
+    if (!hasSpeechSupport()) {
+      announce('Speech recognition not supported in this browser.');
+      return;
+    }
+    if (!recognition) recognition = createRecognition();
+    try {
+      recognition.start();
+      micToggle.textContent = 'Stop mic';
+    } catch (e) {
+      // sometimes start() throws if already starting
+      log('Mic start error: ' + (e && e.message ? e.message : String(e)));
+      try { recognition.stop(); recognition.start(); micToggle.textContent = 'Stop mic'; } catch (ex) {}
+    }
+  }
+
+  function stopMic() {
+    if (!recognition) return;
+    try {
+      recognition.stop();
+    } catch (e) {}
+    micToggle.textContent = 'Start mic';
+  }
+
+  function toggleMic() {
+    if (!hasSpeechSupport()) {
+      announce('Speech recognition not available in this environment.');
+      return;
+    }
+    if (isRecording) stopMic();
+    else startMic();
+  }
+
+  function appendTranscript(text, isFinal = false) {
+    if (!voiceTranscript) return;
+    const time = new Date().toLocaleTimeString();
+    if (isFinal) {
+      // append final as bold line
+      const prefix = `[${time}] `;
+      voiceTranscript.innerText = (voiceTranscript.innerText && voiceTranscript.innerText !== 'No voice activity yet' ? voiceTranscript.innerText + '\n' : '') + prefix + text;
+      voiceTranscript.scrollTop = voiceTranscript.scrollHeight;
+    } else {
+      // show interim as italic appended to last line (transient)
+      // We'll show interim in a lighter style appended to end but not persisted
+      let base = (voiceTranscript.innerText && voiceTranscript.innerText !== 'No voice activity yet') ? voiceTranscript.innerText : '';
+      // remove last transient if present
+      base = base.replace(/\n?\[interim\] .*/s, '');
+      voiceTranscript.innerText = base + (base ? '\n' : '') + '[interim] ' + text;
+      voiceTranscript.scrollTop = voiceTranscript.scrollHeight;
+    }
+  }
+
+  function showInterim(text) {
+    appendTranscript(text, false);
+  }
+
+  function clearTranscript() {
+    if (!voiceTranscript) return;
+    voiceTranscript.innerText = 'No voice activity yet';
+    lastFinalTranscript = '';
+    interimBuffer = '';
+    log('Transcript cleared');
+  }
+
+  function insertLastFinalIntoEditor() {
+    if (!lastFinalTranscript) {
+      announce('No final transcript to insert');
+      return;
+    }
+    // instruct extension to insert snippet as comment or code - extension can decide
+    if (vscode && typeof vscode.postMessage === 'function') {
+      vscode.postMessage({ type: 'transcript', text: lastFinalTranscript, isFinal: true });
+      announce('Sent last transcript to editor');
+      log('Sent transcript to extension: ' + lastFinalTranscript);
+    } else {
+      announce('Simulation: would send transcript to editor');
+    }
+  }
+
+  function sendTranscriptToExtension(text, isFinal) {
+    if (!text) return;
+    if (vscode && typeof vscode.postMessage === 'function') {
+      vscode.postMessage({ type: 'transcript', text: text, isFinal: !!isFinal });
+    }
+  }
+
+  // helpers: UI, announce, play earcons, log
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function renderShortcuts(q='') {
+    if(!shortcutsList) return;
+    const ql = (q||'').toLowerCase().trim();
+    shortcutsList.innerHTML = '';
+    shortcuts.forEach(s=>{
+      if(ql && !((s.label||'').toLowerCase().includes(ql) || (s.keys||'').toLowerCase().includes(ql) || (s.desc||'').toLowerCase().includes(ql))) return;
+      const el = document.createElement('div');
+      el.className = 'shortcut';
+      el.tabIndex = 0;
+      el.setAttribute('role','option');
+      el.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;min-width:0">
+          <div class="chip">${escapeHtml(s.keys.split('+')[0].replace('Ctrl','C'))}</div>
+          <div style="min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.label)}</div>
+            <div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.desc)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="kbd">${escapeHtml(s.keys)}</div>
+        </div>`;
+      el.addEventListener('click', ()=> postCommand(s.id));
+      el.addEventListener('keydown', (e)=> { if(e.key==='Enter') postCommand(s.id); });
+      el.addEventListener('focus', ()=> announce(`${s.label}, ${s.keys}`));
+      shortcutsList.appendChild(el);
+    });
+  }
+
+  function postCommand(cmd){
+    log(`Command: ${cmd}`);
+    if(vscode && typeof vscode.postMessage === 'function') {
+      vscode.postMessage({ type: 'command', command: cmd });
+    } else {
+      announce(`Simulated command ${cmd}`);
+    }
+  }
+
+  function log(txt){
+    if(!activityLog) return;
+    const e = document.createElement('div');
+    e.className = 'log-entry';
+    e.textContent = `${new Date().toLocaleTimeString()} — ${txt}`;
+    activityLog.insertBefore(e, activityLog.firstChild);
+    while (activityLog.childElementCount > 300) activityLog.removeChild(activityLog.lastChild);
+  }
+
+  function announce(text){
+    if(statusBox) statusBox.textContent = `Status: ${text}`;
+    if(state.quiet) return;
+    if('speechSynthesis' in window){
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = state.rate;
+      u.lang = 'en-US';
+      try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch(e){}
+    }
+  }
+
+  function playEarcon(name){
+    if(state.quiet) return;
+    const key = (name||'').replace('.wav','').replace(/^ear_?/,'');
+    const id = 'ear_' + key;
+    const el = document.getElementById(id);
+    if(el && typeof el.play === 'function'){ try { el.currentTime = 0; el.play(); } catch(e){} }
+  }
+
+  // wire UI actions
+  filter && filter.addEventListener('input', (e)=> renderShortcuts(e.target.value));
+  rate && rate.addEventListener('input', (e)=> { state.rate = Number(e.target.value); rateVal.textContent = state.rate.toFixed(1); if(vscode) vscode.postMessage({ type:'setRate', value: state.rate }); });
+  openMic && openMic.addEventListener('click', ()=> toggleMic());
+  micToggle && micToggle.addEventListener('click', ()=> toggleMic());
+  micClear && micClear.addEventListener('click', ()=> clearTranscript());
+  micInsert && micInsert.addEventListener('click', ()=> insertLastFinalIntoEditor());
+  applySnippet && applySnippet.addEventListener('click', ()=> {
+    const s = customSnippet && customSnippet.value ? customSnippet.value : '';
+    if(!s) return;
+    if(vscode) vscode.postMessage({ type: 'insertSnippet', snippet: s });
+    announce('Snippet sent to editor');
+  });
+  errSelect && errSelect.addEventListener('change', (e)=> { const v = e.target.value || ''; if(v && vscode) vscode.postMessage({ type:'setEarcon', event:'error', file: v }); playEarcon(v); announce('Error sound set'); });
+  okSelect && okSelect.addEventListener('change', (e)=> { const v = e.target.value || ''; if(v && vscode) vscode.postMessage({ type:'setEarcon', event:'success', file: v }); playEarcon(v); announce('Success sound set'); });
+  runBtn && runBtn.addEventListener('click', ()=> postCommand('blindCoder.runAndSpeak'));
+  fixBtn && fixBtn.addEventListener('click', ()=> postCommand('blindCoder.fixCodeSyntax'));
+  quietBtn && quietBtn.addEventListener('click', ()=> { state.quiet = !state.quiet; quietBtn.textContent = 'Quiet: ' + (state.quiet ? 'On' : 'Off'); if(vscode) vscode.postMessage({ type:'setQuiet', value: state.quiet }); announce('Quiet ' + (state.quiet ? 'enabled' : 'disabled')); });
+
+  // keyboard: toggle mic with Ctrl+M when panel has focus
+  document.addEventListener('keydown', (e)=>{
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && (e.key === 'm' || e.key === 'M')) {
+      // prevent interfering with other handlers inside webview
+      e.preventDefault();
+      toggleMic();
+    }
+  });
+
+  // receive messages from extension
+  window.addEventListener('message', (ev)=>{
+    const msg = ev.data;
+    if(!msg) return;
+    if(msg.type === 'speak'){
+      announce(typeof msg.text === 'string' ? msg.text : (Array.isArray(msg.text)? msg.text.join(' '): String(msg.text)));
+    } else if(msg.type === 'init' && msg.state){
+      if(msg.state.quiet !== undefined){ state.quiet = !!msg.state.quiet; quietBtn && (quietBtn.textContent = 'Quiet: ' + (state.quiet ? 'On' : 'Off')); }
+      if(msg.state.rate !== undefined){ state.rate = msg.state.rate; rate && (rate.value = String(state.rate)); rateVal && (rateVal.textContent = state.rate.toFixed(1)); }
+      if(msg.state.currentFile && document.getElementById('currentFile')) document.getElementById('currentFile').textContent = msg.state.currentFile;
+      if(typeof msg.state.diagCount === 'number' && document.getElementById('diagCount')) document.getElementById('diagCount').textContent = String(msg.state.diagCount);
+    } else if(msg.type === 'playSound'){
+      playEarcon(msg.name || 'blip.wav');
+    } else if(msg.type === 'status'){
+      announce(msg.text || 'Status update');
+      log(msg.text || 'Status update');
+    } else if(msg.type === 'transcript'){
+      // extension can forward transcripts here (e.g., from server or external source)
+      const t = (typeof msg.text === 'string') ? msg.text : '';
+      if (t) appendTranscript(t, !!msg.isFinal);
+    } else if(msg.type === 'panelReady'){
+      // extension signalled ready; respond with init request
+      if(vscode && typeof vscode.postMessage === 'function') vscode.postMessage({ type: 'panelReady' });
+    }
+  });
+
+  // initial render and readiness
+  renderShortcuts();
+  announce('Audio panel ready');
+  log('Panel ready');
+
+  // expose debug helpers for outside webview
+  if (!vscode) {
+    const banner = document.createElement('div');
+    banner.style.position='fixed'; banner.style.top='0'; banner.style.left='0'; banner.style.right='0'; banner.style.background='#b33'; banner.style.color='white'; banner.style.padding='6px'; banner.style.textAlign='center';
+    banner.textContent = 'Running outside VS Code — simulation mode.';
+    document.body.insertBefore(banner, document.body.firstChild);
+    window.__blindCoder = { postCommand, announce, playEarcon, log, startMic, stopMic };
+  }
+</script>
+</body>
+</html>

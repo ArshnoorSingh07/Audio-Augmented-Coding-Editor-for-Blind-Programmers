@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BlindCoder Voice</title>
+  <style>
+    :root{
+      --bg: #07111a;
+      --card: #0f1720;
+      --muted: #9fb0c6;
+      --accent: #60a5fa;
+      --success: #10b981;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.03);
+      font-family: Inter, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color-scheme: dark;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#020612 0%, var(--bg) 100%);color:#e6eef6}
+    .wrap{max-width:720px;margin:24px auto;padding:18px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);box-shadow:0 12px 40px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7dd3fc);display:flex;align-items:center;justify-content:center;font-weight:700;color:#04263a}
+    h1{margin:0;font-size:18px}
+    .meta{font-size:13px;color:var(--muted)}
+    .status{display:flex;align-items:center;gap:10px;margin:12px 0;padding:10px;border-radius:10px;background:var(--card);border:1px solid rgba(255,255,255,0.02)}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+    .dot.recording{background:var(--danger);box-shadow:0 6px 18px rgba(239,68,68,0.12)}
+    .controls{display:flex;gap:8px;margin-bottom:12px}
+    button{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;cursor:pointer;color:inherit}
+    button.primary{background:linear-gradient(90deg,var(--accent),#7dd3fc);border:0;color:#04263a;font-weight:700}
+    button.warn{background:linear-gradient(90deg,#ff9a9a,#ff6a6a);border:0;color:white}
+    .transcript{min-height:120px;padding:14px;border-radius:10px;background:#041623;border:1px solid rgba(255,255,255,0.02);font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;white-space:pre-wrap;overflow:auto}
+    .interim{color:var(--muted);opacity:0.85}
+    .final{color:var(--text);font-weight:600}
+    .log{margin-top:10px;font-size:12px;color:var(--muted);max-height:120px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01)}
+    .kbd{background:rgba(255,255,255,0.03);padding:4px 8px;border-radius:6px;font-size:12px;color:var(--muted)}
+    .foot{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="BlindCoder voice capture">
+    <header>
+      <div class="logo">BC</div>
+      <div>
+        <h1>BlindCoder — Voice Capture</h1>
+        <div class="meta">Speak naturally. The extension will receive the transcript.</div>
+      </div>
+    </header>
+
+    <div class="status" role="status" aria-live="polite">
+      <div class="dot" id="dot"></div>
+      <div id="statusText">Initializing voice...</div>
+      <div style="flex:1"></div>
+      <div class="kbd">Voice UI</div>
+    </div>
+
+    <div class="controls" aria-hidden="false">
+      <button id="startBtn" class="primary" title="Start recording (Click)">Start</button>
+      <button id="stopBtn" title="Stop recording (Click)" disabled>Stop</button>
+      <button id="restartBtn" title="Restart (use if microphone fails)">Restart</button>
+      <button id="closeBtn" title="Close voice UI">Close</button>
+    </div>
+
+    <div>
+      <label style="display:block;color:var(--muted);margin-bottom:6px">Live transcript</label>
+      <div id="transcript" class="transcript" aria-live="polite" aria-atomic="true">—</div>
+    </div>
+
+    <div class="log" id="log" aria-hidden="false"></div>
+
+    <div class="foot">
+      <div class="meta">Tip: say commands like “fix code”, “insert loop”, or natural snippets.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="meta">Status updates sent to extension</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Acquire VS Code API if present (webview) — otherwise we still run in normal browser for testing.
+    const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+
+    const statusText = document.getElementById('statusText');
+    const dot = document.getElementById('dot');
+    const transcriptEl = document.getElementById('transcript');
+    const logEl = document.getElementById('log');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const closeBtn = document.getElementById('closeBtn');
+
+    function log(msg) {
+      const d = new Date().toLocaleTimeString();
+      const el = document.createElement('div');
+      el.textContent = `${d} — ${msg}`;
+      logEl.prepend(el);
+      // limit lines
+      while (logEl.childElementCount > 200) logEl.removeChild(logEl.lastChild);
+    }
+
+    function postMessage(obj) {
+      try {
+        if (vscode && typeof vscode.postMessage === 'function') {
+          vscode.postMessage(obj);
+        } else {
+          console.debug('[vscode.postMessage simulated]', obj);
+        }
+      } catch (e) {
+        console.warn('postMessage failed', e);
+      }
+    }
+
+    // Feature-detect SpeechRecognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if (!SpeechRecognition) {
+      statusText.textContent = 'SpeechRecognition not available in this environment.';
+      transcriptEl.textContent = 'Your browser does not support the Web Speech API. Use a Chromium-based browser or run inside VS Code where this page is served by the extension (it provides an alternate capture UI).';
+      postMessage({ type: 'status', payload: 'unsupported' });
+      log('SpeechRecognition unsupported');
+      startBtn.disabled = true;
+      stopBtn.disabled = true;
+      restartBtn.disabled = true;
+    }
+
+    let rec = null;
+    let interimText = '';
+    let finalText = '';
+
+    function createRecognition() {
+      if (!SpeechRecognition) return null;
+      const r = new SpeechRecognition();
+      r.lang = 'en-US';
+      r.interimResults = true;
+      r.continuous = true;
+      r.maxAlternatives = 1;
+
+      r.onstart = () => {
+        statusText.textContent = 'Recording...';
+        dot.classList.add('recording');
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        postMessage({ type: 'status', payload: 'started' });
+        log('Recognition started');
+      };
+
+      r.onend = () => {
+        statusText.textContent = 'Stopped';
+        dot.classList.remove('recording');
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        postMessage({ type: 'status', payload: 'stopped' });
+        log('Recognition ended');
+      };
+
+      r.onerror = (ev) => {
+        const err = (ev && ev.error) ? ev.error : 'unknown';
+        statusText.textContent = 'Error: ' + err;
+        postMessage({ type: 'status', payload: 'error:' + err });
+        log('Recognition error: ' + err);
+        // Some errors (like 'not-allowed' or 'service-not-allowed') are fatal.
+        // For recoverable errors, attempt small backoff retry.
+        if (err === 'network' || err === 'no-speech' || err === 'aborted') {
+          setTimeout(() => tryStart(true), 300);
+        }
+      };
+
+      r.onresult = (ev) => {
+        try {
+          // Build interim + final transcript
+          interimText = '';
+          let newestFinal = '';
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const res = ev.results[i];
+            const t = res[0] && res[0].transcript ? res[0].transcript.trim() : '';
+            if (res.isFinal) {
+              newestFinal += (newestFinal ? ' ' : '') + t;
+            } else {
+              interimText += (interimText ? ' ' : '') + t;
+            }
+          }
+
+          if (newestFinal) {
+            // append to finalText and send to extension
+            finalText = (finalText ? finalText + ' ' : '') + newestFinal;
+            postMessage({ type: 'transcript', text: newestFinal, isFinal: true });
+            log('Final: ' + newestFinal);
+          }
+
+          // render combined
+          const combined = (finalText ? finalText + '\n' : '') + (interimText ? '<span class="interim">' + escapeHtml(interimText) + '</span>' : '');
+          transcriptEl.innerHTML = combined || '—';
+
+          // also send interim if available (useful for faster UX)
+          if (interimText) {
+            postMessage({ type: 'transcript', text: interimText, isFinal: false, interim: true });
+          }
+        } catch (e) {
+          console.error('onresult render error', e);
+        }
+      };
+
+      return r;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+    }
+
+    async function startRecognition() {
+      if (!SpeechRecognition) return;
+      if (!rec) rec = createRecognition();
+      try {
+        rec.start();
+        // some browsers will throw if start called multiple times; guard with try/catch
+      } catch (e) {
+        log('startRecognition exception: ' + (e && e.message ? e.message : String(e)));
+        // try recreate and start
+        try {
+          rec = createRecognition();
+          rec.start();
+        } catch (e2) {
+          log('retry start failed: ' + String(e2));
+        }
+      }
+    }
+
+    function stopRecognition() {
+      try {
+        if (rec) rec.stop();
+      } catch (e) {
+        log('stopRecognition error: ' + String(e));
+      }
+    }
+
+    // resilient helper: start with small retries
+    let startAttempts = 0;
+    async function tryStart(forceRestart = false) {
+      startAttempts++;
+      try {
+        if (forceRestart && rec) {
+          try { rec.onend = null; rec.onerror = null; rec.onresult = null; rec = null; } catch (e) {}
+          rec = createRecognition();
+        }
+        await startRecognition();
+      } catch (e) {
+        log('tryStart failed: ' + String(e));
+        if (startAttempts < 3) setTimeout(() => tryStart(forceRestart), 300 + startAttempts * 200);
+        else {
+          statusText.textContent = 'Unable to start microphone';
+          postMessage({ type: 'status', payload: 'start_failed' });
+        }
+      }
+    }
+
+    // wire buttons
+    startBtn.addEventListener('click', () => { startAttempts = 0; tryStart(true); });
+    stopBtn.addEventListener('click', () => { stopRecognition(); });
+    restartBtn.addEventListener('click', () => { startAttempts = 0; tryStart(true); });
+    closeBtn.addEventListener('click', () => { postMessage({ type: 'close' }); try { window.close(); } catch (e) {} });
+
+    // receive messages from parent (extension)
+    window.addEventListener('message', (ev) => {
+      const msg = ev.data;
+      if (!msg || !msg.type) return;
+      if (msg.type === 'command') {
+        if (msg.command === 'start') tryStart(true);
+        if (msg.command === 'stop') stopRecognition();
+        if (msg.command === 'reset') { finalText = ''; interimText = ''; transcriptEl.textContent = '—'; log('Reset requested'); }
+      } else if (msg.type === 'focus') {
+        // noop for now
+      }
+    });
+
+    // notify extension page is ready
+    postMessage({ type: 'ready' });
+    statusText.textContent = 'Ready';
+
+    // auto-start when opened inside VS Code (optional — extension decides)
+    // We do not auto-start by default to avoid unexpected mic prompts. The extension can post {type:'command', command:'start'}.
+    // However for convenience in testing the page outside VS Code, enable start if ?autostart=1 is present in URL.
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get('autostart') === '1' && SpeechRecognition) setTimeout(() => tryStart(true), 250);
+    } catch (e) {}
+
+    // keyboard access: Space toggles start/stop
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'Space' && document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        ev.preventDefault();
+        if (!rec || stopBtn.disabled) tryStart(true);
+        else stopRecognition();
+      }
+    });
+
+    // small courtesy: when page unloads, tell extension
+    window.addEventListener('beforeunload', () => postMessage({ type: 'status', payload: 'unloaded' }));
+  </script>
+</body>
+</html>
