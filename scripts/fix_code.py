@@ -1,19 +1,13 @@
-#!/usr/bin/env python3
-# scripts/fix_code.py
-# Hybrid heuristic + Gemini AI-based Python fixer
-# Compatible with BlindCoder Audio-Augmented Editor
 
 import sys, os, re, ast, json
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-
 USE_AI = bool(os.environ.get("USE_AI_FIXER", "") and os.environ.get("GEMINI_API_KEY"))
 PRIMARY_MODEL = os.environ.get("GEMINI_MODEL", "models/gemini-2.5-flash")
 FALLBACK_MODEL = "models/gemini-pro-latest"
 
-# ---------------- Heuristic Fix Rules ----------------
 def local_heuristic_fix(code: str):
     fixed = code
     fixed = re.sub(
@@ -29,7 +23,6 @@ def local_heuristic_fix(code: str):
     return fixed, fixed != code
 
 
-# ---------------- Extractor ----------------
 def extract_code_from_response(text: str):
     """Extract code block and JSON summary from Gemini reply"""
     if not text:
@@ -50,7 +43,6 @@ def extract_code_from_response(text: str):
     return text.strip() + "\n", json_summary
 
 
-# ---------------- AI Model Loader ----------------
 def get_gemini_model():
     """Try primary model first, fall back to pro-latest if needed."""
     import google.generativeai as genai
@@ -80,7 +72,6 @@ def get_gemini_model():
             sys.exit(2)
 
 
-# ---------------- Main ----------------
 def main():
     if len(sys.argv) < 2:
         print("No file given.", file=sys.stderr)
@@ -104,7 +95,6 @@ def main():
     except SyntaxError:
         pass
 
-    # ---------------- Gemini AI Mode ----------------
     if USE_AI:
         try:
             import google.generativeai as genai
@@ -151,7 +141,6 @@ def main():
             print("# Gemini returned no code block", file=sys.stderr)
             sys.exit(6)
 
-    # ---------------- Fallback ----------------
     try:
         ast.parse(fixed)
         print(fixed, end="")
