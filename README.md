@@ -1,6 +1,6 @@
 # BlindCoder VS Code Extension
 
-This project provides a comprehensive bug fix and improvement for the BlindCoder VS Code extension. The extension provides audio-augmented Python editing specifically designed for blind and visually impaired developers.
+This project provides a comprehensive bug fix and improvement for the BlindCoder VS Code extension. The extension provides audio-augmented Python editing specifically designed for blind and visually impaired developers
 
 ## Project Structure
 
